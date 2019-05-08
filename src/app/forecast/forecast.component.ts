@@ -1,17 +1,18 @@
 import {Component, OnInit} from '@angular/core';
-import {NgForm} from '@angular/forms';
+import {catchError} from 'rxjs/operators';
+import {throwError} from 'rxjs';
 
 import {Forecast} from '../forecast';
 import {CurrentWeather} from '../current-weather';
 import {WeatherService} from '../weather.service';
 import {MessageService} from '../message.service';
 
-
 @Component({
     selector: 'wa-forecast',
     templateUrl: './forecast.component.html',
     styleUrls: ['./forecast.component.scss']
 })
+
 export class ForecastComponent implements OnInit {
 
     constructor(private ws: WeatherService, public messageService: MessageService) {
@@ -19,49 +20,121 @@ export class ForecastComponent implements OnInit {
 
     cityForecast: Forecast[] = [];
     myWeather: CurrentWeather;
+    city = '';
+    dirTemp = 'asc';
+    dirDays = 'desc';
 
-    ngOnInit() {
+    sortTemp() {
+        if (this.dirTemp === 'asc') {
+            this.dirTemp = 'desc';
+            this.cityForecast.sort((a, b) => {
+                return parseInt(b.tempMax) - parseInt(a.tempMax);
+            });
+        } else {
+            this.dirTemp = 'asc';
+            this.cityForecast.sort((a, b) => {
+                return parseInt(a.tempMax) - parseInt(b.tempMax);
+            });
+        }
     }
 
-    onSubmit(forecastForm: NgForm) {
+    sortDay() {
+        this.cityForecast.sort((a, b) => {
+            const aDate = a.day.split(' ')[0].split('-');
+            const aDay = aDate[2];
+            const bDate = b.day.split(' ')[0].split('-');
+            const bDay = bDate[2];
+            if (this.dirDays === 'asc') {
+                return parseInt(aDay) - parseInt(bDay);
+            } else {
+                return parseInt(bDay) - parseInt(aDay);
+            }
+        });
+        if (this.dirDays === 'asc') {
+            this.dirDays = 'desc';
+        } else {
+            this.dirDays = 'asc';
+        }
+    }
+
+    ngOnInit() {
+        const city = this.cityDetect();
+        if (city !== '') {
+            this.city = city;
+            this.getApiData(city);
+        }
+    }
+
+    cityDetect() {
+        const loc = location.href.split('?');
+        let getCity = '';
+        if (loc.length > 1) {
+            const gets = loc[1].split('&');
+
+            gets.map((item) => {
+                const temp = item.split('=');
+                if (temp[0] === 'city') {
+                    return getCity = temp[1];
+                }
+            });
+        }
+        return getCity;
+    }
+
+    getApiData(city) {
+        if (city.length < 1) {
+            this.messageService.add('Please, input city name');
+            history.pushState(null, null, '/');
+            return false;
+        }
+
+        this.ws.getWeatherByCity(city)
+            .pipe(
+                catchError(err => {
+                    // console.log('Handling error getWeatherByCity locally and rethrowing it...', err);
+                    this.ws.log('Not found. Please, check the city exist');
+                    history.pushState(null, null, '/');
+                    return throwError(err);
+                })
+            )
+            .subscribe(
+                (data: any) => {
+                    this.myWeather = new CurrentWeather(
+                        data.name,
+                        data.main.temp,
+                        data.weather[0].icon,
+                        data.weather[0].description,
+                        data.main.temp_max,
+                        data.main.temp_min);
+                    history.pushState(null, null, `?city=${data.name}`);
+                });
+        this.ws.fiveDayForecast(city)
+            .pipe(
+                catchError(err => {
+                    // console.log('Handling error fiveDayForecast locally and rethrowing it...', err);
+                    return throwError(err);
+                })
+            )
+            .subscribe(
+                (data: any) => {
+                    data.list.filter((item, i) => {
+                        if (i % 8 === 0) {
+                            const temp = new Forecast(
+                                item.dt_txt,
+                                item.weather[0].icon,
+                                item.main.temp_max,
+                                item.main.temp_min);
+                            this.cityForecast.push(temp);
+                        }
+                        return false;
+                    });
+                });
+    }
+
+    onSubmit() {
         this.cityForecast.splice(0, this.cityForecast.length);
         this.myWeather = new CurrentWeather('', '', '', '', '', '');
         this.messageService.clear();
-        const city = forecastForm.value.forecastCity;
-        if (city.length < 1) {
-            this.messageService.add('Please, input city name');
-            return false;
-        }
-        this.ws.getWeatherByCity(city).subscribe(
-            (data: any) => {
-                if (data.length === 0) {
-                    return false;
-                }
-                this.myWeather = new CurrentWeather(
-                    data.name,
-                    data.main.temp,
-                    data.weather[0].icon,
-                    data.weather[0].description,
-                    data.main.temp_max,
-                    data.main.temp_min);
-            });
-        this.ws.fiveDayForecast(city).subscribe(
-            (data: any) => {
-                if (data.length === 0) {
-                    return false;
-                }
-                data.list.filter((item, i) => {
-                    if (i % 8 === 0) {
-                        const temp = new Forecast(
-                            item.dt_txt,
-                            item.weather[0].icon,
-                            item.main.temp_max,
-                            item.main.temp_min);
-                        this.cityForecast.push(temp);
-                    }
-                    return false;
-                });
-            });
+        this.getApiData(this.city);
     }
-
 }

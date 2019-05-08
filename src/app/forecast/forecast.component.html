@@ -1,6 +1,6 @@
 <div class="container">
-  <form (ngSubmit)="onSubmit(form)" #form="ngForm" class="forecast-form">
-    <input type="text" name="forecastCity" ngModel placeholder="Name of a city" class="forecast-form__input">
+  <form (ngSubmit)="onSubmit()" class="forecast-form">
+    <input type="text" name="forecastCity" [(ngModel)]="city" placeholder="Name of a city" class="forecast-form__input">
     <button name="button" class="forecast-form__btn">go</button>
   </form>
   <div class="row">
@@ -10,5 +10,9 @@
         <wa-forecast-item [day]="day"></wa-forecast-item>
       </div>
     </div>
+  </div>
+  <div *ngIf="cityForecast.length != 0">
+    <a (click)="sortTemp()" class="sort-btn">Sort temp</a>
+    <a (click)="sortDay()" class="sort-btn">Sort days</a>
   </div>
 </div>

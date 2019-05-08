@@ -1,0 +1,14 @@
+<div class="container">
+  <form (ngSubmit)="onSubmit(form)" #form="ngForm" class="forecast-form">
+    <input type="text" name="forecastCity" ngModel placeholder="Name of a city" class="forecast-form__input">
+    <button name="button" class="forecast-form__btn">go</button>
+  </form>
+  <div class="row">
+  <wa-current class="col-sm-3" [weather]="myWeather"></wa-current>
+    <div class="col-sm-9 row forecast-items">
+      <div class="col-sm forecast-item__wrap" *ngFor="let day of cityForecast">
+        <wa-forecast-item [day]="day"></wa-forecast-item>
+      </div>
+    </div>
+  </div>
+</div>

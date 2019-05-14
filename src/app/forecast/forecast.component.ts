@@ -28,12 +28,12 @@ export class ForecastComponent implements OnInit {
         if (this.dirTemp === 'asc') {
             this.dirTemp = 'desc';
             this.cityForecast.sort((a, b) => {
-                return parseInt(b.tempMax) - parseInt(a.tempMax);
+                return parseInt(b.tempMax, 10) - parseInt(a.tempMax, 10);
             });
         } else {
             this.dirTemp = 'asc';
             this.cityForecast.sort((a, b) => {
-                return parseInt(a.tempMax) - parseInt(b.tempMax);
+                return parseInt(a.tempMax, 10) - parseInt(b.tempMax, 10);
             });
         }
     }
@@ -41,13 +41,13 @@ export class ForecastComponent implements OnInit {
     sortDay() {
         this.cityForecast.sort((a, b) => {
             const aDate = a.day.split(' ')[0].split('-');
-            const aDay = aDate[2];
+            const aDay = parseInt(aDate[2], 10);
             const bDate = b.day.split(' ')[0].split('-');
-            const bDay = bDate[2];
+            const bDay = parseInt(bDate[2], 10);
             if (this.dirDays === 'asc') {
-                return parseInt(aDay) - parseInt(bDay);
+                return aDay - bDay;
             } else {
-                return parseInt(bDay) - parseInt(aDay);
+                return bDay - aDay;
             }
         });
         if (this.dirDays === 'asc') {
@@ -67,18 +67,17 @@ export class ForecastComponent implements OnInit {
 
     cityDetect() {
         const loc = location.href.split('?');
-        let getCity = '';
+        const getCity = {
+            city: ''
+        };
         if (loc.length > 1) {
-            const gets = loc[1].split('&');
-
-            gets.map((item) => {
-                const temp = item.split('=');
-                if (temp[0] === 'city') {
-                    return getCity = temp[1];
-                }
+            const getParams = loc[1].split('&');
+            getParams.map((item) => {
+                const [key, value] = item.split('=');
+                getCity[key] = value;
             });
         }
-        return getCity;
+        return getCity.city;
     }
 
     getApiData(city) {
@@ -87,7 +86,6 @@ export class ForecastComponent implements OnInit {
             history.pushState(null, null, '/');
             return false;
         }
-
         this.ws.getWeatherByCity(city)
             .pipe(
                 catchError(err => {
@@ -107,6 +105,8 @@ export class ForecastComponent implements OnInit {
                         data.main.temp_max,
                         data.main.temp_min);
                     history.pushState(null, null, `?city=${data.name}`);
+                    const reformatCity = this.cityDetect();
+                    this.city = reformatCity;
                 });
         this.ws.fiveDayForecast(city)
             .pipe(

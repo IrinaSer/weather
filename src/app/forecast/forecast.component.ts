@@ -67,18 +67,17 @@ export class ForecastComponent implements OnInit {
 
     cityDetect() {
         const loc = location.href.split('?');
-        let getCity = '';
+        const getCity = {
+            city: ''
+        };
         if (loc.length > 1) {
-            const gets = loc[1].split('&');
-
-            gets.map((item) => {
-                const temp = item.split('=');
-                if (temp[0] === 'city') {
-                    return getCity = temp[1];
-                }
+            const getParams = loc[1].split('&');
+            getParams.map((item) => {
+                const [key, value] = item.split('=');
+                getCity[key] = value;
             });
         }
-        return getCity;
+        return getCity.city;
     }
 
     getApiData(city) {
@@ -87,7 +86,6 @@ export class ForecastComponent implements OnInit {
             history.pushState(null, null, '/');
             return false;
         }
-
         this.ws.getWeatherByCity(city)
             .pipe(
                 catchError(err => {
@@ -107,6 +105,8 @@ export class ForecastComponent implements OnInit {
                         data.main.temp_max,
                         data.main.temp_min);
                     history.pushState(null, null, `?city=${data.name}`);
+                    const reformatCity = this.cityDetect();
+                    this.city = reformatCity;
                 });
         this.ws.fiveDayForecast(city)
             .pipe(
